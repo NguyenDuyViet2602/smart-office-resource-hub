@@ -1,8 +1,9 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import Redis from 'ioredis';
 import { RoomsService } from '../rooms/rooms.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { EquipmentService } from '../equipment/equipment.service';
@@ -19,12 +20,12 @@ interface ChatSession {
   messages: { role: GeminiRole; parts: GeminiPart[] }[];
 }
 
+const SESSION_TTL = 60 * 60 * 4; // 4 hours in seconds
+
 @Injectable()
 export class AiAgentService {
   private genAI?: GoogleGenerativeAI;
   private logger = new Logger('AiAgentService');
-  /** In-memory only; lost on restart and not shared across instances — use Redis if you scale horizontally. */
-  private sessions = new Map<string, ChatSession>();
   private isEnabled: boolean;
   private readonly defaultModel = 'gemini-2.5-flash';
 
@@ -35,11 +36,21 @@ export class AiAgentService {
     private bookingsService: BookingsService,
     private equipmentService: EquipmentService,
     private notificationsService: NotificationsService,
+    @Inject('REDIS_CLIENT') private redisClient: Redis,
   ) {
     const apiKey = configService.get<string>('GEMINI_API_KEY');
     this.isEnabled = !!apiKey && apiKey !== 'your-gemini-api-key';
     if (this.isEnabled) this.genAI = new GoogleGenerativeAI(apiKey!);
     else this.logger.warn('Gemini API key not configured — AI Agent disabled');
+  }
+
+  private async getSession(key: string): Promise<ChatSession | null> {
+    const raw = await this.redisClient.get(`ai:session:${key}`);
+    return raw ? (JSON.parse(raw) as ChatSession) : null;
+  }
+
+  private async saveSession(key: string, session: ChatSession): Promise<void> {
+    await this.redisClient.setex(`ai:session:${key}`, SESSION_TTL, JSON.stringify(session));
   }
 
   private getTools(): any {
@@ -182,9 +193,9 @@ export class AiAgentService {
         }
 
         case 'list_equipment': {
-          const equipment = await this.equipmentService.findAll(args.status);
+          const result = await this.equipmentService.findAll(args.status);
           return JSON.stringify(
-            equipment.map((e) => ({
+            result.data.map((e) => ({
               id: e.id,
               name: e.name,
               type: e.type,
@@ -243,7 +254,8 @@ export class AiAgentService {
     if (!this.genAI) throw new HttpException('Gemini client chưa được khởi tạo.', HttpStatus.INTERNAL_SERVER_ERROR);
 
     const key = `${userId}:${sessionId}`;
-    if (!this.sessions.has(key)) {
+    let session = await this.getSession(key);
+    if (!session) {
       // Tính giờ Việt Nam (UTC+7) độc lập với timezone của server
       const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
       const pad = (n: number) => String(n).padStart(2, '0');
@@ -251,7 +263,7 @@ export class AiAgentService {
       const vnTimeStr = `${pad(nowVN.getUTCHours())}:${pad(nowVN.getUTCMinutes())}`;
       const vnISOPrefix = `${nowVN.getUTCFullYear()}-${pad(nowVN.getUTCMonth() + 1)}-${pad(nowVN.getUTCDate())}`;
 
-      this.sessions.set(key, {
+      session = {
         messages: [
           {
             role: 'user',
@@ -279,10 +291,11 @@ Nhiệm vụ của bạn:
             ],
           },
         ],
-      });
+      };
+      await this.saveSession(key, session);
     }
 
-    const session = this.sessions.get(key)!;
+    session = (await this.getSession(key))!;
     session.messages.push({ role: 'user', parts: [{ text: message }] });
 
     try {
@@ -314,6 +327,7 @@ Nhiệm vụ của bạn:
             session.messages = [session.messages[0], ...session.messages.slice(-20)];
           }
 
+          await this.saveSession(key, session);
           return reply;
         }
 
@@ -355,7 +369,7 @@ Nhiệm vụ của bạn:
       );
       return data;
     } catch (err) {
-      this.logger.error(`AI Vision request failed: ${err.message}`);
+      this.logger.error(`AI Vision request failed: ${err instanceof Error ? err.message : String(err)}`);
       throw err;
     }
   }

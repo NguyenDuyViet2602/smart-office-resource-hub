@@ -50,6 +50,34 @@ export class UsersService {
     return this.usersRepo.save(user);
   }
 
+  async savePasswordResetToken(id: string, token: string, expires: Date): Promise<void> {
+    await this.usersRepo.update(id, {
+      passwordResetToken: token,
+      passwordResetExpires: expires,
+    });
+  }
+
+  async findByResetToken(token: string): Promise<User | null> {
+    return this.usersRepo.findOne({
+      where: { passwordResetToken: token },
+      select: {
+        id: true,
+        email: true,
+        passwordResetToken: true,
+        passwordResetExpires: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async updatePassword(id: string, hashedPassword: string): Promise<void> {
+    await this.usersRepo.update(id, {
+      password: hashedPassword,
+      passwordResetToken: undefined!,
+      passwordResetExpires: undefined!,
+    });
+  }
+
   async deactivate(id: string): Promise<void> {
     await this.usersRepo.update(id, { isActive: false });
   }

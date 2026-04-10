@@ -90,7 +90,7 @@ export default function AiChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
         title="AI Chat Assistant"
       >
         <MessageCircle className="w-6 h-6" />
@@ -101,8 +101,8 @@ export default function AiChatWidget() {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-40 transition-all ${
-        isMinimized ? 'h-14' : 'h-[560px]'
+      className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 left-4 sm:left-auto sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-40 transition-all ${
+        isMinimized ? 'h-14' : 'h-[560px] max-h-[calc(100vh-5rem)]'
       }`}
     >
       {/* Header */}

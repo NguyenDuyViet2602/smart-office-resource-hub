@@ -71,9 +71,9 @@ export default function BookingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Đặt chỗ của tôi</h1>
+      <div className="p-4 md:p-8">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Đặt chỗ của tôi</h1>
           <p className="text-slate-500 mt-1">Quản lý các đặt chỗ phòng họp và thiết bị</p>
         </div>
 
@@ -139,9 +139,9 @@ function BookingCard({
   const StatusIcon = statusCfg.icon;
 
   return (
-    <div className={`bg-white rounded-xl border p-5 shadow-sm ${isPast ? 'opacity-70' : ''}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
+    <div className={`bg-white rounded-xl border p-4 md:p-5 shadow-sm ${isPast ? 'opacity-70' : ''}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3 md:gap-4">
           <div className={`p-2.5 rounded-lg ${booking.resourceType === 'room' ? 'bg-indigo-100' : 'bg-orange-100'}`}>
             {booking.resourceType === 'room'
               ? <MapPin className="w-5 h-5 text-indigo-600" />
@@ -166,7 +166,7 @@ function BookingCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}>
             <StatusIcon className="w-3.5 h-3.5" />
             {statusCfg.label}

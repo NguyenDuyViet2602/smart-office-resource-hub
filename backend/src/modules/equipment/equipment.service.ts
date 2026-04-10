@@ -4,6 +4,14 @@ import { Repository } from 'typeorm';
 import { Equipment, EquipmentStatus } from './equipment.entity';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 @Injectable()
 export class EquipmentService {
   constructor(
@@ -16,10 +24,17 @@ export class EquipmentService {
     return this.equipmentRepo.save(equipment);
   }
 
-  async findAll(status?: EquipmentStatus): Promise<Equipment[]> {
+  async findAll(status?: EquipmentStatus, page = 1, limit = 20): Promise<PaginatedResult<Equipment>> {
     const where: any = {};
     if (status) where.status = status;
-    return this.equipmentRepo.find({ where, relations: ['currentBorrower'] });
+    const [data, total] = await this.equipmentRepo.findAndCount({
+      where,
+      relations: ['currentBorrower'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { name: 'ASC' },
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: string): Promise<Equipment> {
@@ -48,8 +63,8 @@ export class EquipmentService {
   async returnEquipment(id: string, aiVerified = false): Promise<Equipment> {
     const eq = await this.findById(id);
     eq.status = EquipmentStatus.AVAILABLE;
-    eq.currentBorrowerId = null as any;
-    eq.dueReturnAt = null as any;
+    eq.currentBorrowerId = undefined!;
+    eq.dueReturnAt = undefined!;
     return this.equipmentRepo.save(eq);
   }
 

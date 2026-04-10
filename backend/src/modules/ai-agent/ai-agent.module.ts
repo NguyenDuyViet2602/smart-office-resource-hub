@@ -7,6 +7,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { EquipmentModule } from '../equipment/equipment.module';
 
 @Module({
+  // RedisModule is @Global() so REDIS_CLIENT is available everywhere
   imports: [HttpModule, RoomsModule, BookingsModule, EquipmentModule],
   controllers: [AiAgentController],
   providers: [AiAgentService],

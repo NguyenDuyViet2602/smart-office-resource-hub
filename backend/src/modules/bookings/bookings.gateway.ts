@@ -58,12 +58,25 @@ export class BookingsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     client.leave(`floor:${floorId}`);
   }
 
+  @SubscribeMessage('join:equipment')
+  handleJoinEquipment(client: Socket, equipmentId: string) {
+    client.join(`equipment:${equipmentId}`);
+  }
+
+  @SubscribeMessage('leave:equipment')
+  handleLeaveEquipment(client: Socket, equipmentId: string) {
+    client.leave(`equipment:${equipmentId}`);
+  }
+
   emitRoomUpdate(floorId: string, update: RoomAvailabilityUpdate) {
     this.server.to(`floor:${floorId}`).emit('room:availability', update);
   }
 
   emitEquipmentUpdate(update: EquipmentStatusUpdate) {
-    this.server.emit('equipment:status', update);
+    // Broadcast to subscribers of that specific equipment item only
+    this.server.to(`equipment:${update.equipmentId}`).emit('equipment:status', update);
+    // Also emit a general event for admin dashboard listeners
+    this.server.to('equipment:admin').emit('equipment:status', update);
   }
 
   emitBookingCreated(booking: Booking | null) {

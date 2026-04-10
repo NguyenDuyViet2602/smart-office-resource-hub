@@ -35,7 +35,7 @@ export default function AdminEquipmentPage() {
     setLoading(true);
     try {
       const res = await equipmentApi.list();
-      setEquipment(res.data);
+      setEquipment(res.data.data ?? res.data);
     } finally {
       setLoading(false);
     }
@@ -62,9 +62,9 @@ export default function AdminEquipmentPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Quản lý thiết bị</h1>
+      <div className="p-4 md:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Quản lý thiết bị</h1>
           <button
             onClick={() => { setEditing(null); setForm({ name: '', type: 'other', serialNumber: '', status: 'available', location: '', description: '', yoloLabels: [] }); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 text-sm font-medium"
@@ -76,8 +76,9 @@ export default function AdminEquipmentPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
         ) : (
-          <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
-            <table className="w-full text-sm text-slate-900">
+          <div className="overflow-hidden rounded-xl border shadow-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm text-slate-900 bg-white min-w-[680px]">
               <thead className="bg-slate-50 border-b">
                 <tr>
                   {['Tên', 'Loại', 'Serial', 'Vị trí', 'Trạng thái', 'Đang mượn', 'Thao tác'].map((h) => (
@@ -116,6 +117,7 @@ export default function AdminEquipmentPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

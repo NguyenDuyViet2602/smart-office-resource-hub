@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { equipmentApi, aiApi, getApiErrorMessage } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 import { Package, Camera, Loader2, X, Calendar, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,10 +34,12 @@ interface Equipment {
   serialNumber?: string;
   location?: string;
   dueReturnAt?: string;
+  currentBorrowerId?: string | null;
   currentBorrower?: { name: string };
 }
 
 export default function EquipmentPage() {
+  const currentUser = getUser();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -53,7 +56,7 @@ export default function EquipmentPage() {
     setLoading(true);
     try {
       const res = await equipmentApi.list(filter !== 'all' ? filter : undefined);
-      setEquipment(res.data);
+      setEquipment(res.data.data ?? res.data);
     } catch {
       toast.error('Không tải được danh sách thiết bị');
     } finally {
@@ -127,8 +130,8 @@ export default function EquipmentPage() {
       } else {
         toast.error('AI không nhận diện được thiết bị. Thử lại.');
       }
-    } catch {
-      toast.error('Lỗi kết nối AI Vision');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Lỗi kết nối AI Vision'));
     } finally {
       setDetecting(false);
     }
@@ -136,13 +139,13 @@ export default function EquipmentPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="p-4 md:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Thiết bị văn phòng</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900">Thiết bị văn phòng</h1>
             <p className="text-slate-500 mt-1">Mượn và trả thiết bị bằng AI Vision</p>
           </div>
-          <div className="flex items-center gap-2 bg-white rounded-xl border p-1.5 shadow-sm">
+          <div className="flex items-center gap-1 bg-white rounded-xl border p-1.5 shadow-sm flex-wrap">
             {['all', 'available', 'borrowed', 'maintenance'].map((s) => (
               <button
                 key={s}
@@ -202,7 +205,7 @@ export default function EquipmentPage() {
                       Mượn
                     </button>
                   )}
-                  {eq.status === 'borrowed' && (
+                  {eq.status === 'borrowed' && eq.currentBorrowerId === currentUser?.id && (
                     <button
                       onClick={() => openCamera(eq)}
                       className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-500 transition-colors flex items-center justify-center gap-1.5"

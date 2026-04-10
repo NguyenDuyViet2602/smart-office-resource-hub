@@ -1,7 +1,8 @@
 import {
   Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards,
+  DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { RoomAvailabilityDto } from './dto/room-availability.dto';
@@ -26,9 +27,16 @@ export class RoomsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all rooms, optionally filtered by floorId' })
-  findAll(@Query('floorId') floorId?: string) {
-    return this.roomsService.findAll(floorId);
+  @ApiOperation({ summary: 'List rooms with pagination, optionally filtered by floorId' })
+  @ApiQuery({ name: 'floorId', required: false })
+  @ApiQuery({ name: 'page', type: Number, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  findAll(
+    @Query('floorId') floorId?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+  ) {
+    return this.roomsService.findAll(floorId, page, Math.min(limit!, 200));
   }
 
   @Get('available')

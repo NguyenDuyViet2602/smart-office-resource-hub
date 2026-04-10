@@ -2,14 +2,14 @@ import {
   Body, Controller, Delete, Get, Param, Post, Query, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsOptional, IsString, IsDateString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/user.entity';
-import { IsOptional, IsString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
 
 class CancelBookingDto {
   @ApiPropertyOptional()
@@ -50,9 +50,18 @@ export class BookingsController {
   @ApiOperation({ summary: 'Get room schedule for a given date' })
   getRoomSchedule(
     @Param('roomId') roomId: string,
-    @Query('date') date: string,
+    @Query('date') date?: string,
   ) {
-    return this.bookingsService.findRoomSchedule(roomId, new Date(date || Date.now()));
+    let parsedDate: Date;
+    if (date) {
+      parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        parsedDate = new Date();
+      }
+    } else {
+      parsedDate = new Date();
+    }
+    return this.bookingsService.findRoomSchedule(roomId, parsedDate);
   }
 
   @Get(':id')

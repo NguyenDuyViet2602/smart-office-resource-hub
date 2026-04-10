@@ -62,7 +62,7 @@ async function seed() {
 
   // Rooms
   const existingRooms = await roomsService.findAll();
-  if (existingRooms.length === 0) {
+  if (existingRooms.data.length === 0) {
     const roomData = [
       { name: 'Phòng A', capacity: 4, features: ['tv', 'whiteboard'], floorId: floor2.id, mapCoords: { x: 50, y: 50, width: 140, height: 90 } },
       { name: 'Phòng B', capacity: 8, features: ['tv', 'projector', 'whiteboard'], floorId: floor2.id, mapCoords: { x: 220, y: 50, width: 160, height: 90 } },
@@ -78,7 +78,7 @@ async function seed() {
 
   // Equipment
   const existingEquipment = await equipmentService.findAll();
-  if (existingEquipment.length === 0) {
+  if (existingEquipment.data.length === 0) {
     const equipmentData = [
       { name: 'iPhone 15 Pro #1', type: EquipmentType.PHONE, serialNumber: 'IP15P001', location: 'Tủ thiết bị - Tầng 2', yoloLabels: ['cell phone', 'smartphone', 'iphone'] },
       { name: 'iPhone 15 Pro #2', type: EquipmentType.PHONE, serialNumber: 'IP15P002', location: 'Tủ thiết bị - Tầng 2', yoloLabels: ['cell phone', 'smartphone', 'iphone'] },

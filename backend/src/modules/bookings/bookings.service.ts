@@ -18,6 +18,8 @@ import { User } from '../users/user.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingsGateway } from './bookings.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditAction } from '../audit-log/audit-log.entity';
 
 @Injectable()
 export class BookingsService {
@@ -39,6 +41,7 @@ export class BookingsService {
     private redisClient: Redis,
     private gateway: BookingsGateway,
     private notifications: NotificationsService,
+    private auditLog: AuditLogService,
   ) {
     // redlock@5 is still prerelease on npm; pin major when a stable 5.x ships
     this.redlock = new Redlock([redisClient], {
@@ -50,6 +53,10 @@ export class BookingsService {
   async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
     const startTime = new Date(dto.startTime);
     const endTime = new Date(dto.endTime);
+
+    if (startTime < new Date()) {
+      throw new BadRequestException('Cannot book a time slot in the past');
+    }
 
     if (endTime <= startTime) {
       throw new BadRequestException('End time must be after start time');
@@ -129,6 +136,14 @@ export class BookingsService {
         // Gửi thông báo Telegram (không chặn response)
         this.sendBookingNotification(userId, result!);
 
+        this.auditLog.log({
+          action: AuditAction.BOOKING_CREATED,
+          userId,
+          resourceId: saved.id,
+          resourceType: 'room',
+          metadata: { roomId, startTime, endTime },
+        }).catch((e) => this.logger.error(`Audit log failed: ${e.message}`));
+
         return result!;
       } catch (err) {
         await queryRunner.rollbackTransaction();
@@ -205,6 +220,14 @@ export class BookingsService {
         // Gửi thông báo Telegram (không chặn response)
         this.sendBookingNotification(userId, result!);
 
+        this.auditLog.log({
+          action: AuditAction.EQUIPMENT_CHECKOUT,
+          userId,
+          resourceId: saved.id,
+          resourceType: 'equipment',
+          metadata: { equipmentId, startTime, endTime },
+        }).catch((e) => this.logger.error(`Audit log failed: ${e.message}`));
+
         return result!;
       } catch (err) {
         await queryRunner.rollbackTransaction();
@@ -258,7 +281,17 @@ export class BookingsService {
         .execute();
     }
 
-    return this.bookingsRepo.save(booking);
+    const saved = await this.bookingsRepo.save(booking);
+
+    this.auditLog.log({
+      action: AuditAction.BOOKING_CANCELLED,
+      userId,
+      resourceId: id,
+      resourceType: booking.equipmentId ? 'equipment' : 'room',
+      metadata: { reason },
+    }).catch((e) => this.logger.error(`Audit log failed: ${e.message}`));
+
+    return saved;
   }
 
   async findRoomSchedule(roomId: string, date: Date): Promise<Booking[]> {

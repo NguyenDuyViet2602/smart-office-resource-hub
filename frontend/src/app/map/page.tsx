@@ -65,7 +65,7 @@ export default function MapPage() {
       ]);
 
       const availableIds = new Set((activeRes.data as { id: string }[]).map((r) => r.id));
-      const enriched = (roomsRes.data as Room[]).map((room) => ({
+      const enriched = ((roomsRes.data.data ?? roomsRes.data) as Room[]).map((room) => ({
         ...room,
         isBooked: room.status === 'available' && !availableIds.has(room.id),
       }));
@@ -117,11 +117,10 @@ export default function MapPage() {
 
   const handleRoomClick = (room: Room) => {
     setSelectedRoom(room);
-    if (room.status === 'available' && !room.isBooked) {
+    if (room.status === 'available') {
       setShowModal(true);
     } else {
-      const status = room.status !== 'available' ? 'đang bảo trì' : 'đã được đặt';
-      toast(`Phòng ${room.name} ${status}`, { icon: '⚠️' });
+      toast(`Phòng ${room.name} đang bảo trì / ngừng hoạt động`, { icon: '⚠️' });
     }
   };
 
@@ -134,16 +133,16 @@ export default function MapPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col h-full">
-        <div className="px-8 py-6 border-b bg-white">
-          <div className="flex items-center justify-between">
+        <div className="px-4 md:px-8 py-4 md:py-6 border-b bg-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Bản đồ văn phòng</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">Bản đồ văn phòng</h1>
               <p className="text-slate-500 text-sm mt-1">
                 {now.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex gap-2 flex-wrap">
                 {[
                   { color: 'bg-green-100 text-green-700', count: stats.available, label: 'Còn trống' },
                   { color: 'bg-red-100 text-red-700', count: stats.booked, label: 'Đã đặt' },
@@ -183,7 +182,7 @@ export default function MapPage() {
           )}
         </div>
 
-        <div className="flex-1 p-6 overflow-hidden">
+        <div className="flex-1 p-3 md:p-6 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />

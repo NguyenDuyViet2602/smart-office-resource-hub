@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Request, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AiAgentService } from './ai-agent.service';
 import { ChatDto, AiDetectDto } from './dto/chat.dto';
@@ -30,17 +30,23 @@ export class AiAgentController {
     const result = await this.aiAgentService.detectEquipment(dto.imageBase64, dto.equipmentId);
 
     if (result.confirmed && dto.equipmentId && result.confidence > 0.75) {
-      const equipment = await this.equipmentService.returnEquipment(dto.equipmentId, true);
+      const equipmentBefore = await this.equipmentService.findById(dto.equipmentId);
+      if (!equipmentBefore.currentBorrowerId) {
+        throw new BadRequestException('Thiết bị hiện không ở trạng thái đang mượn.');
+      }
+      if (equipmentBefore.currentBorrowerId !== req.user.id) {
+        throw new ForbiddenException('Bạn không thể trả thiết bị thay người khác.');
+      }
 
-      if (equipment.currentBorrowerId) {
-        const borrower = req.user;
-        if (borrower.telegramChatId) {
-          await this.notificationsService.notifyEquipmentReturnedByAI(
-            equipment,
-            borrower.telegramChatId,
-            result.confidence,
-          );
-        }
+      const borrowerChatId = equipmentBefore.currentBorrower?.telegramChatId;
+      await this.equipmentService.returnEquipment(dto.equipmentId, true);
+
+      if (borrowerChatId) {
+        await this.notificationsService.notifyEquipmentReturnedByAI(
+          equipmentBefore,
+          borrowerChatId,
+          result.confidence,
+        );
       }
     }
 

@@ -1,7 +1,8 @@
 import {
   Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Request,
+  DefaultValuePipe, ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { EquipmentService } from './equipment.service';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { EquipmentStatus } from './equipment.entity';
@@ -9,6 +10,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/user.entity';
+import { InternalApiKeyGuard } from '../../common/guards/internal-api-key.guard';
 import { IsDateString, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -34,9 +36,16 @@ export class EquipmentController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List equipment, optionally filter by status' })
-  findAll(@Query('status') status?: EquipmentStatus) {
-    return this.equipmentService.findAll(status);
+  @ApiOperation({ summary: 'List equipment with pagination, optionally filter by status' })
+  @ApiQuery({ name: 'status', enum: EquipmentStatus, required: false })
+  @ApiQuery({ name: 'page', type: Number, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  findAll(
+    @Query('status') status?: EquipmentStatus,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return this.equipmentService.findAll(status, page, Math.min(limit!, 100));
   }
 
   @Get('overdue')
@@ -68,9 +77,10 @@ export class EquipmentController {
   }
 
   @Post(':id/return')
-  @ApiOperation({ summary: 'Return equipment manually' })
+  @UseGuards(InternalApiKeyGuard)
+  @ApiOperation({ summary: 'Return equipment (called by AI Vision service)' })
   returnEquipment(@Param('id') id: string) {
-    return this.equipmentService.returnEquipment(id, false);
+    return this.equipmentService.returnEquipment(id, true);
   }
 
   @Delete(':id')

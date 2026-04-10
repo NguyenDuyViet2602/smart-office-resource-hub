@@ -1,14 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Telegraf } from 'telegraf';
+import * as nodemailer from 'nodemailer';
 import { Booking } from '../bookings/booking.entity';
 import { Equipment } from '../equipment/equipment.entity';
 
 @Injectable()
 export class NotificationsService {
   private bot: Telegraf;
+  private mailer: nodemailer.Transporter;
   private logger = new Logger('NotificationsService');
   private isEnabled: boolean;
+  private isEmailEnabled: boolean;
 
   constructor(private configService: ConfigService) {
     const token = configService.get<string>('TELEGRAM_BOT_TOKEN');
@@ -23,6 +26,24 @@ export class NotificationsService {
       this.logger.log('Telegram bot started');
     } else {
       this.logger.warn('Telegram bot token not configured — notifications disabled');
+    }
+
+    const smtpHost = configService.get<string>('SMTP_HOST');
+    this.isEmailEnabled = !!smtpHost;
+
+    if (this.isEmailEnabled) {
+      this.mailer = nodemailer.createTransport({
+        host: smtpHost,
+        port: configService.get<number>('SMTP_PORT', 587),
+        secure: false,
+        auth: {
+          user: configService.get<string>('SMTP_USER'),
+          pass: configService.get<string>('SMTP_PASS'),
+        },
+      });
+      this.logger.log('Email service configured');
+    } else {
+      this.logger.warn('SMTP not configured — email notifications disabled');
     }
   }
 
@@ -40,6 +61,34 @@ export class NotificationsService {
         if (attempt < retries) await new Promise((r) => setTimeout(r, 1000));
       }
     }
+  }
+
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    if (!this.isEmailEnabled) {
+      this.logger.warn(`Email skipped (SMTP not configured): to=${to}`);
+      return;
+    }
+    try {
+      const from = this.configService.get<string>('SMTP_FROM', 'noreply@smartoffice.local');
+      await this.mailer.sendMail({ from, to, subject, html });
+      this.logger.log(`Email sent to ${to}`);
+    } catch (err) {
+      this.logger.error(`Failed to send email to ${to}: ${err.message}`);
+      throw err;
+    }
+  }
+
+  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+    await this.sendEmail(
+      to,
+      'Smart Office — Password Reset',
+      `<p>Bạn đã yêu cầu đặt lại mật khẩu.</p>
+       <p><a href="${resetLink}">Click vào đây để đặt lại mật khẩu</a></p>
+       <p>Link có hiệu lực trong 1 giờ. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`,
+    );
   }
 
   async notifyBookingConfirmed(booking: Booking, telegramChatId: string): Promise<void> {

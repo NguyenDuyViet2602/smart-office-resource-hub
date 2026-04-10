@@ -42,13 +42,14 @@ export default function AdminBookingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-slate-900 mb-8">Tất cả đặt chỗ</h1>
+      <div className="p-4 md:p-8">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 mb-6 md:mb-8">Tất cả đặt chỗ</h1>
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
         ) : (
-          <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
-            <table className="w-full text-sm text-slate-900">
+          <div className="overflow-hidden rounded-xl border shadow-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm text-slate-900 bg-white min-w-[640px]">
               <thead className="bg-slate-50 border-b">
                 <tr>
                   {['Người đặt', 'Tài nguyên', 'Thời gian', 'Trạng thái', 'Ghi chú'].map((h) => (
@@ -83,6 +84,7 @@ export default function AdminBookingsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

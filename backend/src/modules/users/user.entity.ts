@@ -40,6 +40,13 @@ export class User {
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;
 
+  @Column({ nullable: true, name: 'password_reset_token' })
+  @Exclude()
+  passwordResetToken: string;
+
+  @Column({ nullable: true, name: 'password_reset_expires', type: 'timestamptz' })
+  passwordResetExpires: Date;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

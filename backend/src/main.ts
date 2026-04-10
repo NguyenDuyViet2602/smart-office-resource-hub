@@ -39,7 +39,18 @@ async function bootstrap() {
     console.log(`Swagger docs: http://localhost:${port}/api/docs`);
   }
 
+  // Graceful shutdown: allow in-flight requests to complete before exiting
+  app.enableShutdownHooks();
+
   await app.listen(port);
   console.log(`Application running on: http://localhost:${port}`);
+
+  const shutdown = async (signal: string) => {
+    console.log(`\nReceived ${signal}, shutting down gracefully...`);
+    await app.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 bootstrap();

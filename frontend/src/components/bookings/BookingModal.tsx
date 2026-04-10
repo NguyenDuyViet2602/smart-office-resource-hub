@@ -71,8 +71,14 @@ export default function BookingModal({ room, onClose, onSuccess }: BookingModalP
 
   if (!room) return null;
 
+  const now = new Date();
+  const minStartTime = date === today
+    ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    : undefined;
+
   const startISO = toLocalISO(date, startTime);
   const endISO = toLocalISO(date, endTime);
+  const isPast = new Date(startISO) < now;
   const isTimeValid = new Date(endISO) > new Date(startISO);
   const isConflict =
     isTimeValid &&
@@ -84,6 +90,10 @@ export default function BookingModal({ room, onClose, onSuccess }: BookingModalP
     e.preventDefault();
     setLoading(true);
     try {
+      if (isPast) {
+        toast.error('Không thể đặt phòng ở thời gian trong quá khứ');
+        return;
+      }
       if (!isTimeValid) {
         toast.error('Giờ kết thúc phải sau giờ bắt đầu');
         return;
@@ -190,10 +200,11 @@ export default function BookingModal({ room, onClose, onSuccess }: BookingModalP
               <input
                 type="time"
                 value={startTime}
+                min={minStartTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
                 className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 text-sm ${
-                  isConflict
+                  isPast || isConflict
                     ? 'border-rose-400 focus:ring-rose-400 bg-rose-50'
                     : 'border-slate-300 focus:ring-indigo-500'
                 }`}
@@ -218,7 +229,13 @@ export default function BookingModal({ room, onClose, onSuccess }: BookingModalP
             </div>
           </div>
 
-          {isConflict && (
+          {isPast && (
+            <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Không thể đặt phòng ở thời gian trong quá khứ.
+            </div>
+          )}
+          {!isPast && isConflict && (
             <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               Khung giờ này trùng lịch đã đặt. Vui lòng chọn giờ khác.
@@ -249,7 +266,7 @@ export default function BookingModal({ room, onClose, onSuccess }: BookingModalP
             </button>
             <button
               type="submit"
-              disabled={loading || isConflict}
+              disabled={loading || isPast || isConflict}
               className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}

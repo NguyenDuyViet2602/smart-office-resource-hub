@@ -64,8 +64,8 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">Hồ sơ cá nhân</h1>
+      <div className="max-w-2xl mx-auto px-4 py-6 md:p-8">
+        <h1 className="text-xl md:text-2xl font-bold text-slate-900 mb-6">Hồ sơ cá nhân</h1>
 
         {loading ? (
           <div className="bg-white rounded-xl shadow-sm border p-8 text-center text-slate-500">

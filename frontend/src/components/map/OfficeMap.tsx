@@ -183,8 +183,8 @@ export default function OfficeMap({ rooms, onRoomClick, selectedRoomId }: Office
               {tooltip.room.features.map((f) => FEATURE_ICONS[f] || f).join(' ')}
             </p>
           )}
-          <p className={`mt-1 font-medium ${tooltip.room.isBooked ? 'text-red-400' : 'text-green-400'}`}>
-            {tooltip.room.isBooked ? 'Đang có người đặt' : 'Còn trống'}
+          <p className={`mt-1 font-medium ${tooltip.room.isBooked ? 'text-yellow-400' : 'text-green-400'}`}>
+            {tooltip.room.isBooked ? 'Đang có người đặt (bấm để đặt giờ khác)' : 'Còn trống'}
           </p>
         </div>
       )}

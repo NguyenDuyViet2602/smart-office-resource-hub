@@ -6,6 +6,14 @@ import { Booking, BookingStatus } from '../bookings/booking.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { RoomAvailabilityDto } from './dto/room-availability.dto';
 
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 @Injectable()
 export class RoomsService {
   constructor(
@@ -20,10 +28,17 @@ export class RoomsService {
     return this.roomsRepo.save(room);
   }
 
-  async findAll(floorId?: string): Promise<Room[]> {
+  async findAll(floorId?: string, page = 1, limit = 50): Promise<PaginatedResult<Room>> {
     const where: any = {};
     if (floorId) where.floorId = floorId;
-    return this.roomsRepo.find({ where, relations: ['floor'] });
+    const [data, total] = await this.roomsRepo.findAndCount({
+      where,
+      relations: ['floor'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { name: 'ASC' },
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: string): Promise<Room> {
@@ -43,34 +58,42 @@ export class RoomsService {
   }
 
   async findAvailable(query: RoomAvailabilityDto): Promise<Room[]> {
-    const rooms = await this.roomsRepo.find({
-      where: { status: RoomStatus.AVAILABLE },
-      relations: ['floor'],
-    });
+    // Build query using a single LEFT JOIN to detect conflicts — avoids N+1
+    const qb = this.roomsRepo
+      .createQueryBuilder('room')
+      .leftJoinAndSelect('room.floor', 'floor')
+      .where('room.status = :status', { status: RoomStatus.AVAILABLE });
 
-    if (!query.startTime || !query.endTime) return rooms;
+    if (query.minCapacity) {
+      qb.andWhere('room.capacity >= :minCapacity', { minCapacity: query.minCapacity });
+    }
 
-    const start = new Date(query.startTime);
-    const end = new Date(query.endTime);
+    if (query.startTime && query.endTime) {
+      const start = new Date(query.startTime);
+      const end = new Date(query.endTime);
 
-    const conflictingBookings = await this.bookingsRepo
-      .createQueryBuilder('b')
-      .where('b.status NOT IN (:...statuses)', {
-        statuses: [BookingStatus.CANCELLED, BookingStatus.COMPLETED],
-      })
-      .andWhere('b.room_id IS NOT NULL')
-      .andWhere('b.start_time < :end AND b.end_time > :start', { start, end })
-      .getMany();
+      // Exclude rooms that have an overlapping active booking
+      qb.andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM bookings b
+          WHERE b.room_id = room.id
+            AND b.status NOT IN ('${BookingStatus.CANCELLED}', '${BookingStatus.COMPLETED}')
+            AND b.start_time < :end
+            AND b.end_time > :start
+        )`,
+        { start, end },
+      );
+    }
 
-    const bookedRoomIds = new Set(conflictingBookings.map((b) => b.roomId));
+    const rooms = await qb.getMany();
 
-    return rooms.filter((room) => {
-      if (bookedRoomIds.has(room.id)) return false;
-      if (query.minCapacity && room.capacity < query.minCapacity) return false;
-      if (query.features?.length) {
-        return query.features.every((f) => room.features?.includes(f));
-      }
-      return true;
-    });
+    // Filter by features in-memory (JSON array field, can't do in SQL portably)
+    if (query.features?.length) {
+      return rooms.filter((r) =>
+        query.features!.every((f) => r.features?.includes(f)),
+      );
+    }
+
+    return rooms;
   }
 }
