@@ -82,12 +82,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-slate-400 text-sm mt-6">
-            Chưa có tài khoản?{' '}
-            <Link href="/register" className="text-indigo-400 hover:text-indigo-300">
-              Đăng ký ngay
-            </Link>
-          </p>
+          <div className="mt-6 space-y-3">
+            <p className="text-center text-slate-400 text-sm">
+              <Link href="/forgot-password" className="text-indigo-400 hover:text-indigo-300">
+                Quên mật khẩu?
+              </Link>
+            </p>
+            <p className="text-center text-slate-400 text-sm">
+              Chưa có tài khoản?{' '}
+              <Link href="/register" className="text-indigo-400 hover:text-indigo-300">
+                Đăng ký ngay
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

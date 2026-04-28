@@ -65,6 +65,9 @@ export const authApi = {
   register: (name: string, email: string, password: string) =>
     api.post('/auth/register', { name, email, password }),
   me: () => api.get('/auth/me'),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post('/auth/reset-password', { token, password }),
 };
 
 export type JsonRecord = Record<string, unknown>;

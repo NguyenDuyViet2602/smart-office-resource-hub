@@ -77,11 +77,15 @@ export class RoomsService {
         `NOT EXISTS (
           SELECT 1 FROM bookings b
           WHERE b.room_id = room.id
-            AND b.status NOT IN ('${BookingStatus.CANCELLED}', '${BookingStatus.COMPLETED}')
+            AND b.status NOT IN (:...excludedStatuses)
             AND b.start_time < :end
             AND b.end_time > :start
         )`,
-        { start, end },
+        {
+          excludedStatuses: [BookingStatus.CANCELLED, BookingStatus.COMPLETED],
+          start,
+          end,
+        },
       );
     }
 

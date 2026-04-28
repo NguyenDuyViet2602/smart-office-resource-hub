@@ -369,8 +369,24 @@ Nhiệm vụ của bạn:
       );
       return data;
     } catch (err) {
-      this.logger.error(`AI Vision request failed: ${err instanceof Error ? err.message : String(err)}`);
-      throw err;
+      const e = err as any;
+      const isConnectionError =
+        e?.code === 'ECONNREFUSED' ||
+        e?.code === 'ENOTFOUND' ||
+        e?.cause?.code === 'ECONNREFUSED';
+
+      if (isConnectionError) {
+        this.logger.warn('AI Vision service is not reachable');
+        throw new HttpException(
+          'Dịch vụ nhận diện AI hiện không khả dụng. Vui lòng thử lại sau.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+
+      const status = e?.response?.status;
+      const message = e?.response?.data?.detail ?? e?.message ?? 'AI Vision error';
+      this.logger.error(`AI Vision request failed (${status ?? 'no status'}): ${message}`);
+      throw new HttpException(message, status ?? HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

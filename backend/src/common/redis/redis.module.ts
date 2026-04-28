@@ -14,10 +14,8 @@ const logger = new Logger('RedisModule');
         const client = new Redis({
           host: configService.get('REDIS_HOST', 'localhost'),
           port: configService.get<number>('REDIS_PORT', 6379),
-          // Retry up to 5 times with increasing delay, then stop retrying
           maxRetriesPerRequest: 3,
-          retryStrategy: (times) => (times <= 5 ? Math.min(times * 200, 2000) : null),
-          lazyConnect: true,
+          retryStrategy: (times) => Math.min(times * 200, 5000),
         });
 
         client.on('error', (err) => logger.error(`Redis error: ${err.message}`));
@@ -25,7 +23,6 @@ const logger = new Logger('RedisModule');
 
         // Non-fatal ping: log a warning if Redis is down but let the app start
         try {
-          await client.connect();
           await client.ping();
           logger.log('Redis ping OK');
         } catch (err) {
