@@ -304,7 +304,9 @@ Nhiệm vụ của bạn:
         tools: this.getTools() as any,
       });
 
-      for (let step = 0; step < 8; step++) {
+      let lastText = '';
+
+      for (let step = 0; step < 15; step++) {
         const res = await model.generateContent({ contents: session.messages } as any);
 
         const candidate = (res as any).response?.candidates?.[0];
@@ -315,12 +317,14 @@ Nhiệm vụ của bạn:
           .filter((t) => typeof t === 'string' && t.length > 0)
           .join('');
 
+        if (text) lastText = text;
+
         const fnCalls = parts.filter((p) => 'functionCall' in p) as Array<{
           functionCall: { name: string; args?: Record<string, unknown> };
         }>;
 
         if (fnCalls.length === 0) {
-          const reply = text || 'Xin lỗi, tôi không hiểu yêu cầu này.';
+          const reply = text || lastText || 'Xin lỗi, tôi không hiểu yêu cầu này.';
           session.messages.push({ role: 'model', parts: [{ text: reply }] });
 
           if (session.messages.length > 40) {
@@ -351,8 +355,19 @@ Nhiệm vụ của bạn:
         }
       }
 
-      throw new HttpException('Gemini: vượt quá số bước tool-call cho phép.', HttpStatus.BAD_GATEWAY);
+      // Vòng lặp đã hết nhưng booking có thể đã thực hiện thành công —
+      // trả về text cuối cùng thay vì throw lỗi gây nhầm lẫn cho người dùng.
+      const fallbackReply = lastText || 'Đã thực hiện xong yêu cầu của bạn.';
+      session.messages.push({ role: 'model', parts: [{ text: fallbackReply }] });
+      if (session.messages.length > 40) {
+        session.messages = [session.messages[0], ...session.messages.slice(-20)];
+      }
+      await this.saveSession(key, session);
+      this.logger.warn(`AI agent reached max steps (15) for user ${userId}`);
+      return fallbackReply;
     } catch (err) {
+      // Không bọc lại HttpException do chính code này throw
+      if (err instanceof HttpException) throw err;
       this.throwGeminiHttp(err);
     }
   }

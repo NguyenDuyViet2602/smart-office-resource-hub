@@ -123,7 +123,10 @@ export class BookingsService {
         const saved: Booking = await queryRunner.manager.save(booking);
         await queryRunner.commitTransaction();
 
-        const result = await this.bookingsRepo.findOne({ where: { id: saved.id } });
+        const result = await this.bookingsRepo.findOne({
+          where: { id: saved.id },
+          relations: ['room', 'equipment'],
+        });
         this.gateway.emitRoomUpdate(room.floorId ?? '', {
           roomId,
           available: false,
@@ -134,7 +137,9 @@ export class BookingsService {
         this.gateway.emitBookingCreated(result);
 
         // Gửi thông báo Telegram (không chặn response)
-        this.sendBookingNotification(userId, result!);
+        this.sendBookingNotification(userId, result!).catch((e) =>
+          this.logger.error(`sendBookingNotification error: ${e.message}`),
+        );
 
         this.auditLog.log({
           action: AuditAction.BOOKING_CREATED,
@@ -213,12 +218,17 @@ export class BookingsService {
         const saved: Booking = await queryRunner.manager.save(booking);
         await queryRunner.commitTransaction();
 
-        const result = await this.bookingsRepo.findOne({ where: { id: saved.id } });
+        const result = await this.bookingsRepo.findOne({
+          where: { id: saved.id },
+          relations: ['room', 'equipment'],
+        });
         this.gateway.emitEquipmentUpdate({ equipmentId, status: 'borrowed', borrowerId: userId });
         this.gateway.emitBookingCreated(result);
 
         // Gửi thông báo Telegram (không chặn response)
-        this.sendBookingNotification(userId, result!);
+        this.sendBookingNotification(userId, result!).catch((e) =>
+          this.logger.error(`sendBookingNotification error: ${e.message}`),
+        );
 
         this.auditLog.log({
           action: AuditAction.EQUIPMENT_CHECKOUT,

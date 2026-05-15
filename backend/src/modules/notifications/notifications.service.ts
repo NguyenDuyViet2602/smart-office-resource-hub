@@ -79,7 +79,10 @@ export class NotificationsService {
   }
 
   async sendPasswordResetEmail(to: string, token: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    if (!frontendUrl) {
+      throw new Error('FRONTEND_URL environment variable is not configured');
+    }
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 
     await this.sendEmail(
